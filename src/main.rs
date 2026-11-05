@@ -114,6 +114,7 @@ fn run_crop(args: CropArgs) -> Result<()> {
         parallel: args.scan.parallel,
         benchmark: args.benchmark,
         embedded: false,
+        select_all: args.select_all,
     };
     let mut scan_slot = Some(scan);
 
@@ -169,6 +170,7 @@ fn run_album(args: AlbumArgs) -> Result<()> {
             parallel: args.scan.parallel,
             benchmark: false,
             embedded: true,
+            select_all: args.select_all,
         },
     };
 

@@ -32,6 +32,14 @@ impl Canvas {
         self.active_handle = None;
     }
 
+    /// A selection over the whole image (what `A` and `--select-all`
+    /// make), added beside any existing ones like a Ctrl-drag.
+    pub fn select_entire_image(&mut self, image_size: egui::Vec2) {
+        self.selections.push(Selection {
+            rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), image_size),
+        });
+    }
+
     pub fn handle_pointer(
         &mut self,
         response: &egui::Response,
@@ -123,6 +131,28 @@ impl Canvas {
         // Move all selections
         for selection in &mut self.selections {
             selection.translate(delta, image_size);
+        }
+    }
+
+    /// Alt+arrow: one edge of the active (last) selection travels
+    /// `ARROW_MOVE_STEP` outward, or inward on Shift+Alt; the other three
+    /// edges stay. Clamped to the image and to a 1px minimum, like a
+    /// handle drag.
+    pub fn handle_edge_nudge(&mut self, keys: &KeyboardState, image_size: egui::Vec2) {
+        let Some(last) = self.selections.last_mut() else {
+            return;
+        };
+        let step = ARROW_MOVE_STEP;
+        let edges = [
+            (SelectionHandle::Left, egui::vec2(-keys.nudge_left.outward(step), 0.0)),
+            (SelectionHandle::Right, egui::vec2(keys.nudge_right.outward(step), 0.0)),
+            (SelectionHandle::Top, egui::vec2(0.0, -keys.nudge_up.outward(step))),
+            (SelectionHandle::Bottom, egui::vec2(0.0, keys.nudge_down.outward(step))),
+        ];
+        for (handle, delta) in edges {
+            if delta != egui::Vec2::ZERO {
+                *last = last.clone().adjusted(handle, delta, image_size);
+            }
         }
     }
 

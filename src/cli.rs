@@ -216,6 +216,11 @@ pub struct CropArgs {
     #[arg(long, default_value_t = false)]
     pub resave: bool,
 
+    /// Start every image with the whole image selected, so one drag of an
+    /// edge handle (or Alt+arrow) is the crop
+    #[arg(short = 'a', long = "select-all", default_value_t = false)]
+    pub select_all: bool,
+
     /// Show performance diagnostics
     #[arg(long, default_value_t = false)]
     pub benchmark: bool,
@@ -236,6 +241,10 @@ pub struct AlbumArgs {
     /// Output format for saved images when cropping from the album
     #[arg(short, long, value_enum, default_value_t = OutputFormat::Avif)]
     pub format: OutputFormat,
+
+    /// Open each image cropped from the album with the whole image selected
+    #[arg(short = 'a', long = "select-all", default_value_t = false)]
+    pub select_all: bool,
 
     /// Directory to move selected files to with the `m` key
     /// (created if missing; must be a directory)

@@ -26,6 +26,12 @@ imagecropper crop test-images
 
 Drag with your mouse to select the crop area, then press **Enter** to save the cropped image and move to the next one. Use **Space** to skip images and **Delete** to move bad images to trash.
 
+With `-a/--select-all` every image starts with the whole image selected, so clipping an edge is a single drag of that edge's handle (or a few **Alt+Arrow** presses) before **Enter**:
+
+```sh
+imagecropper crop -a test-images
+```
+
 ![ImageCropper screenshot](docs/Imagecropper%20Screenshot.avif)
 
 when pressing **Enter**, it will save this image:
@@ -180,6 +186,7 @@ imagecropper crop [OPTIONS] <PATHS>...
 *   `-o, --order <ORDER>`: Image order: `filename` (default), `randomize`, `modified`, `size`/`size+`, `size-`, `exif`/`exif+`, `exif-`.
 *   `-r, --recursive`: Recursively scan subdirectories for images. Disabled by default.
 *   `--resave`: Automatically convert images to AVIF when navigating away from them, even if no crop was performed. Useful for batch converting a folder.
+*   `-a, --select-all`: Start every image (and every rotation of it) with the whole image selected, so a crop is one drag of an edge handle, or a few **Alt+Arrow** presses, and **Enter**. Also accepted by `album`, for the crop session opened from the grid.
 *   `--report-sizes`: When enabled, show the original and new file sizes (human-readable: KB/MB) and the percentage of the new file after background save/backup operations complete.
 *   `--dry-run`: Simulate operations without moving or writing files.
 
@@ -189,6 +196,8 @@ imagecropper crop [OPTIONS] <PATHS>...
 *   **Ctrl + Mouse Drag**: Create additional selections.
 *   **Drag Handles/Corners**: Resize the active selection.
 *   **Arrow Keys**: Move all selections.
+*   **Alt + Arrow Keys**: Grow the active selection on that side: **Alt+Left** pushes its left edge out, **Alt+Right** its right edge, **Alt+Up** the top, **Alt+Down** the bottom. Hold the key to keep going.
+*   **Shift + Alt + Arrow Keys**: Shrink it on that side instead.
 *   **Enter**: Crop the selected area(s) and save. Moves to the next image.
 *   **Space**: Skip to the next image (triggers auto-resave if enabled).
 *   **Backspace**: Go to the previous image.

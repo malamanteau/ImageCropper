@@ -40,6 +40,9 @@ pub struct AppOptions {
     /// When true, shutdown requests set `exit_to_album` instead of closing
     /// the window — used when the crop UI is embedded inside the album view.
     pub embedded: bool,
+    /// Start every image (and every rotation of it) with the whole image
+    /// selected, so one edge-handle drag or Alt+arrow is the crop.
+    pub select_all: bool,
 }
 
 pub struct ImageCropperApp {
@@ -69,6 +72,7 @@ pub struct ImageCropperApp {
     pub total_deleted_bytes: u64,
     pub exit_summary_printed: bool,
     pub embedded: bool,
+    pub select_all: bool,
     /// Set when the app is embedded in the album view and the user asked to
     /// leave crop mode (Esc, or after the image list completed).
     pub exit_to_album: bool,
@@ -145,6 +149,7 @@ impl ImageCropperApp {
             total_deleted_bytes: 0,
             exit_summary_printed: false,
             embedded: options.embedded,
+            select_all: options.select_all,
             exit_to_album: false,
             scan_done: scan_rx.is_none(),
             scan_rx,
@@ -266,7 +271,7 @@ impl ImageCropperApp {
                 preloaded.image.width() as f32,
                 preloaded.image.height() as f32,
             );
-            self.canvas.clear();
+            self.reset_selection();
 
             let texture_start = std::time::Instant::now();
 
@@ -311,6 +316,7 @@ impl ImageCropperApp {
             // Not in cache, start loading if not already
             self.image = None;
             self.texture = None;
+            self.canvas.clear();
             self.status = format!(
                 "Loading {} ({}/{})",
                 path.display(),
@@ -338,25 +344,13 @@ impl ImageCropperApp {
         }
     }
 
-    fn handle_keyboard(ctx: &egui::Context) -> KeyboardState {
-        ctx.input(|input| KeyboardState {
-            next_image: input.key_pressed(egui::Key::Space),
-            prev_image: input.key_pressed(egui::Key::Backspace),
-            save_selection: input.key_pressed(egui::Key::Enter),
-            delete: input.key_pressed(egui::Key::Delete),
-            escape: input.key_pressed(egui::Key::Escape),
-            move_up: input.key_down(egui::Key::ArrowUp),
-            move_down: input.key_down(egui::Key::ArrowDown),
-            move_left: input.key_down(egui::Key::ArrowLeft),
-            move_right: input.key_down(egui::Key::ArrowRight),
-            preview: input.key_down(egui::Key::P),
-            rotate_cw: input.key_pressed(egui::Key::R) && !input.modifiers.shift,
-            rotate_ccw: input.key_pressed(egui::Key::R) && input.modifiers.shift,
-            full_height: input.key_pressed(egui::Key::H),
-            full_width: input.key_pressed(egui::Key::W),
-            select_all: input.key_pressed(egui::Key::A),
-            skip: input.key_pressed(egui::Key::S),
-        })
+    /// The selection state of a fresh image (or a rotated one): none, or
+    /// with `--select-all` the whole image.
+    fn reset_selection(&mut self) {
+        self.canvas.clear();
+        if self.select_all {
+            self.canvas.select_entire_image(self.image_size);
+        }
     }
 
     fn advance(&mut self, ctx: &egui::Context, render_state: Option<&RenderState>) {
@@ -700,7 +694,7 @@ impl ImageCropperApp {
             }
 
             self.image = Some(new_image);
-            self.canvas.clear(); // Clear selections as they are now invalid
+            self.reset_selection(); // the old selections are in the old orientation
 
             if self.benchmark {
                 println!("[Benchmark] Rotation took {:?}", start.elapsed());
@@ -908,7 +902,7 @@ impl App for ImageCropperApp {
             return;
         }
 
-        let keys = Self::handle_keyboard(ctx);
+        let keys = KeyboardState::read(ctx);
 
         if keys.escape {
             if !self.canvas.selections.is_empty() {
@@ -937,10 +931,8 @@ impl App for ImageCropperApp {
 
         if keys.save_selection {
             self.exit_attempt_count = 0;
-            if self.crop_selections(ctx, render_state) {
-                // crop_selections now advances automatically
-                self.canvas.clear();
-            }
+            // crop_selections advances; loading the next image resets the selection
+            self.crop_selections(ctx, render_state);
         }
 
         if keys.next_image {
@@ -957,9 +949,7 @@ impl App for ImageCropperApp {
         }
 
         if keys.select_all {
-            self.canvas.selections.push(crate::selection::Selection {
-                rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), self.image_size),
-            });
+            self.canvas.select_entire_image(self.image_size);
             self.status = "Selected entire image".into();
         }
 
@@ -998,6 +988,7 @@ impl App for ImageCropperApp {
         }
 
         self.canvas.handle_arrow_movement(&keys, self.image_size);
+        self.canvas.handle_edge_nudge(&keys, self.image_size);
 
         egui::CentralPanel::default().show(ui, |ui| {
             let (response, painter) =
@@ -1094,7 +1085,7 @@ impl App for ImageCropperApp {
             draw_text_with_bg(
                 response.rect.right_bottom() + egui::vec2(-12.0, -12.0),
                 egui::Align2::RIGHT_BOTTOM,
-                "Enter: Save | Space: Next | S: Skip | Backspace: Prev | Delete: Trash | R: Rotate | P: Preview | A: Select All | H/W: Full Height/Width | Esc: Clear/Quit".to_string(),
+                "Enter: Save | Space: Next | S: Skip | Backspace: Prev | Delete: Trash | R: Rotate | P: Preview | A: Select All | H/W: Full Height/Width | Arrows: Move | Alt+Arrow: Grow edge | Shift+Alt+Arrow: Shrink edge | Esc: Clear/Quit".to_string(),
                 egui::FontId::monospace(16.0),
                 Color32::from_gray(200),
             );

@@ -194,3 +194,24 @@ fn mouse_select_mode_defaults_to_sequence() {
         Cli::try_parse_from(["imagecropper", "album", "--mouse-select-mode=bogus", "/x"]).is_err()
     );
 }
+
+#[test]
+fn select_all_parses_on_crop_and_album() {
+    let cli = Cli::try_parse_from(["imagecropper", "crop", "-a", "/x"]).unwrap();
+    let Commands::Crop(c) = cli.command else {
+        panic!("expected crop")
+    };
+    assert!(c.select_all);
+
+    let cli = Cli::try_parse_from(["imagecropper", "crop", "/x"]).unwrap();
+    let Commands::Crop(c) = cli.command else {
+        panic!("expected crop")
+    };
+    assert!(!c.select_all);
+
+    let cli = Cli::try_parse_from(["imagecropper", "album", "--select-all", "/x"]).unwrap();
+    let Commands::Album(a) = cli.command else {
+        panic!("expected album")
+    };
+    assert!(a.select_all);
+}
